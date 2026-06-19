@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search Launcher — PR Clipping</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f3f8; color: #222; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* HEADER */
+  .header { background: #1F3864; color: #fff; padding: 11px 20px; display: flex; align-items: center; gap: 10px; }
+  .header h1 { font-size: 15px; flex: 1; }
+  .popup-notice { font-size: 11px; color: #f59e0b; background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.3); padding: 4px 12px; border-radius: 12px; white-space: nowrap; cursor: default; }
+
+  /* CONTROL BAR */
+  .ctrl-bar { background: #162d55; padding: 7px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .ctrl-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .ctrl-label { font-size: 11px; color: #7a9fd4; font-weight: 700; white-space: nowrap; }
+  .pill { padding: 4px 12px; border-radius: 14px; border: 1px solid #3a5a90; background: transparent; color: #aac4e8; font-size: 12px; cursor: pointer; transition: all .12s; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+  .pill:hover { background: #2a4a7a; color: #fff; }
+  .pill.active { background: #f59e0b; color: #111; border-color: #f59e0b; font-weight: 700; }
+  .pill.e-active { background: #34A853; color: #fff; border-color: #34A853; font-weight: 700; }
+  .pill-del { font-size: 12px; opacity: .6; margin-left: 2px; }
+  .pill-del:hover { opacity: 1; }
+  .btn-add-engine { padding: 3px 10px; border-radius: 12px; border: 1px dashed #4a6a9a; background: transparent; color: #7a9fd4; font-size: 12px; cursor: pointer; }
+  .btn-add-engine:hover { border-color: #7ab4ff; color: #7ab4ff; }
+  .divider { width: 1px; height: 22px; background: #2a4070; flex-shrink: 0; }
+
+  /* LAYOUT */
+  .layout { display: flex; flex: 1; min-height: 0; }
+
+  /* SIDEBAR */
+  .sidebar { width: 196px; min-width: 150px; background: #fff; border-right: 1px solid #dde3f0; display: flex; flex-direction: column; }
+  .sidebar-hd { padding: 10px 13px 8px; font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #eef0f6; display: flex; align-items: center; justify-content: space-between; }
+  .btn-add-proj { background: #1F3864; color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .proj-list { flex: 1; overflow-y: auto; padding: 5px 0; }
+  .proj-item { padding: 8px 13px; cursor: pointer; font-size: 13px; color: #444; display: flex; align-items: center; gap: 7px; border-left: 3px solid transparent; user-select: none; }
+  .proj-item:hover { background: #f0f4ff; }
+  .proj-item.active { background: #eef2ff; color: #1F3864; font-weight: 700; border-left-color: #1F3864; }
+  .proj-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .proj-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .proj-cnt { font-size: 10px; background: #e8eaf0; color: #888; padding: 1px 6px; border-radius: 10px; }
+  .proj-item.active .proj-cnt { background: #c5d3f5; color: #1F3864; }
+
+  /* MAIN */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .proj-hd { padding: 11px 18px 10px; background: #fff; border-bottom: 1px solid #dde3f0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .proj-title { font-size: 16px; font-weight: 700; color: #1F3864; flex: 1; min-width: 80px; }
+  .btn-xs { padding: 4px 11px; border-radius: 12px; border: none; cursor: pointer; font-size: 11px; font-weight: 600; }
+  .btn-rename { background: #f0f4ff; color: #1F3864; }
+  .btn-rename:hover { background: #dce5ff; }
+  .btn-del-proj { background: #fff0f0; color: #dc2626; }
+  .btn-del-proj:hover { background: #fee2e2; }
+
+  .add-row { padding: 8px 18px; background: #f8f9fc; border-bottom: 1px solid #dde3f0; display: flex; gap: 7px; }
+  .add-row input { flex: 1; padding: 7px 13px; border: 1px solid #c8d0e0; border-radius: 20px; font-size: 13px; outline: none; }
+  .add-row input:focus { border-color: #4285F4; box-shadow: 0 0 0 2px rgba(66,133,244,.12); }
+  .btn-add-kw { background: #1F3864; color: #fff; padding: 7px 15px; border-radius: 20px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .btn-add-kw:hover { background: #2d4f8c; }
+
+  .kw-area { flex: 1; overflow-y: auto; padding: 13px 18px; }
+
+  /* KW CARD */
+  .kw-card { background: #fff; border-radius: 11px; box-shadow: 0 1px 4px rgba(0,0,0,.07); margin-bottom: 11px; border: 1px solid #eaecf4; }
+  .kw-hd { padding: 10px 13px; display: flex; align-items: center; gap: 8px; }
+  .kw-label { font-size: 15px; font-weight: 700; color: #1F3864; flex: 1; }
+  .badge { font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+  .badge-kw { background: #dbeafe; color: #1d4ed8; }
+  .badge-hash { background: #fce7f3; color: #9d174d; }
+  .btn-del-kw { background: none; border: none; color: #ccc; cursor: pointer; font-size: 14px; padding: 3px 7px; border-radius: 6px; }
+  .btn-del-kw:hover { color: #ef4444; background: #fff0f0; }
+
+  /* PLATFORM BUTTONS */
+  .plat-grid { padding: 0 13px 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .pb { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 18px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; text-decoration: none; transition: all .12s; white-space: nowrap; }
+  .pb:hover { opacity: .85; transform: translateY(-1px); }
+
+  .pb-open-all { background: #f59e0b; color: #111; }
+  .pb-web      { background: #4285F4; color: #fff; }
+  .pb-news     { background: #34A853; color: #fff; }
+  .pb-ig       { background: linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888); color: #fff; }
+  .pb-fb       { background: #1877F2; color: #fff; }
+  .pb-tiktok   { background: #010101; color: #fff; }
+  .pb-x        { background: #111; color: #fff; }
+  .pb-yt       { background: #FF0000; color: #fff; }
+  .pb-threads  { background: #000; color: #fff; }
+  .pb-lemon8   { background: #FFD60A; color: #111; }
+  .pb-line     { background: #06C755; color: #fff; }
+  .pb-custom   { background: #7C3AED; color: #fff; }
+
+  .no-time-flag { font-size: 10px; opacity: .55; }
+
+  /* EMPTY / NO-PROJ */
+  .empty { text-align: center; padding: 50px 20px; color: #bbb; }
+  .empty-icon { font-size: 36px; margin-bottom: 10px; }
+  .empty h3 { font-size: 14px; color: #999; margin-bottom: 6px; }
+  .empty p { font-size: 12px; line-height: 1.7; }
+  .no-proj { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; color: #bbb; }
+  .no-proj .icon { font-size: 42px; }
+  .no-proj p { font-size: 13px; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .modal-overlay.hidden { display: none; }
+  .modal { background: #fff; border-radius: 14px; padding: 22px; width: 360px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,.2); }
+  .modal h3 { font-size: 14px; color: #1F3864; margin-bottom: 13px; }
+  .modal label { font-size: 11px; color: #888; font-weight: 700; display: block; margin-bottom: 4px; }
+  .modal input { width: 100%; padding: 8px 12px; border: 1px solid #c8d0e0; border-radius: 8px; font-size: 13px; outline: none; margin-bottom: 12px; }
+  .modal input:focus { border-color: #4285F4; }
+  .modal .hint { font-size: 11px; color: #aaa; margin-top: -8px; margin-bottom: 12px; line-height: 1.5; }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+  .btn-ok     { background: #1F3864; color: #fff; padding: 8px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .btn-cancel { background: #f0f0f0; color: #555; padding: 8px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; }
+
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1F3864; color: #fff; padding: 9px 20px; border-radius: 22px; font-size: 13px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 200; white-space: nowrap; max-width: 90vw; text-align: center; }
+  .toast.show { opacity: 1; }
+
+  /* BOOKMARKLET BAR */
+  .bookmarklet-bar { background: #fff8e6; border-bottom: 1px solid #f0d888; padding: 7px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .bm-label { font-size: 12px; font-weight: 700; color: #7a5c00; white-space: nowrap; }
+  .bm-btn { display: inline-block; background: #1877F2; color: #fff; padding: 5px 14px; border-radius: 16px; font-size: 12px; font-weight: 700; text-decoration: none; cursor: grab; border: 2px dashed #4a9fff; }
+  .bm-btn:hover { background: #0d5fd4; }
+  .bm-btn:active { cursor: grabbing; }
+  .bm-hint { font-size: 11px; color: #999; }
+
+  .c0{background:#4285F4} .c1{background:#EA4335} .c2{background:#34A853} .c3{background:#FBBC05}
+  .c4{background:#8B5CF6} .c5{background:#EC4899} .c6{background:#14B8A6} .c7{background:#F97316}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🔍 Search Launcher — PR Clipping</h1>
+  <span class="popup-notice" title="วิธีอนุญาต: กด icon 🚫 ที่แถบ URL แล้วเลือก 'Always allow popups'">⚠ ครั้งแรกต้องอนุญาต Popup ใน Browser</span>
+</div>
+
+<!-- CONTROL BAR -->
+<div class="ctrl-bar">
+  <!-- TIME -->
+  <div class="ctrl-group">
+    <span class="ctrl-label">⏱</span>
+    <button class="pill" data-r="d"   onclick="setRange('d',this)">24 ชม.</button>
+    <button class="pill" data-r="3d"  onclick="setRange('3d',this)">3 วัน</button>
+    <button class="pill" data-r="w"   onclick="setRange('w',this)">1 สัปดาห์</button>
+    <button class="pill" data-r="m"   onclick="setRange('m',this)">1 เดือน</button>
+    <button class="pill" data-r=""    onclick="setRange('',this)">ทั้งหมด</button>
+  </div>
+  <div class="divider"></div>
+  <!-- ENGINE -->
+  <div class="ctrl-group" id="enginePills">
+    <!-- rendered by JS -->
+  </div>
+  <button class="btn-add-engine" onclick="openModal('add-engine')">+ Engine</button>
+</div>
+
+<div class="bookmarklet-bar">
+  <span class="bm-label">🔖 Facebook — Recent posts อัตโนมัติ:</span>
+  <a class="bm-btn" id="bmBtn" draggable="true">📘 FB Recent Posts</a>
+  <span class="bm-hint">← Drag ปุ่มนี้ไปวาง Bookmark Bar ครั้งเดียว → กดในหน้า Facebook Search</span>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-hd">โปรเจ็กต์ <button class="btn-add-proj" onclick="openModal('add-proj')">+</button></div>
+    <div class="proj-list" id="projList"></div>
+  </div>
+  <div class="main" id="mainArea"></div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal" id="modalBox"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────────────────────────────
+const COLORS = ['c0','c1','c2','c3','c4','c5','c6','c7'];
+
+const BUILTIN_ENGINES = [
+  { id:'google', name:'Google ★',      builtin:true },
+  { id:'bing',   name:'Bing News',     builtin:true },
+  { id:'ddg',    name:'DuckDuckGo',    builtin:true },
+];
+
+// Platforms: [key, icon+label, css, supportsTimeUrl]
+const PLATFORMS = [
+  { k:'web',    label:'🔍 Web',          cls:'pb-web',    t:true  },
+  { k:'news',   label:'📰 News',         cls:'pb-news',   t:true  },
+  { k:'ig',     label:'📸 Instagram',    cls:'pb-ig',     t:true  },
+  { k:'fb',     label:'📘 Facebook',     cls:'pb-fb',     t:false },
+  { k:'tiktok', label:'🎵 TikTok',       cls:'pb-tiktok', t:false },
+  { k:'x',      label:'𝕏 Twitter/X',   cls:'pb-x',      t:true  },
+  { k:'yt',     label:'🎬 YouTube',      cls:'pb-yt',     t:true  },
+  { k:'threads',label:'🧵 Threads',      cls:'pb-threads',t:false },
+  { k:'lemon8', label:'🍋 Lemon8',       cls:'pb-lemon8', t:false },
+  { k:'line',   label:'📱 LINE TODAY',   cls:'pb-line',   t:true  },
+];
+
+// ── STATE ──────────────────────────────────────────────────────────────────────
+let S = JSON.parse(localStorage.getItem('sl_v4') || 'null') || {
+  range: 'd',
+  engine: 'google',
+  customEngines: [],
+  projects: [{
+    id:'mmad', name:'MMAD', color:'c0',
+    keywords:[
+      {id:'k1', text:'MMAD',                 type:'keyword'},
+      {id:'k2', text:'MunMun Art Destination',type:'keyword'},
+      {id:'k3', text:'มันมัน ศรีนครินทร์',   type:'keyword'},
+      {id:'k4', text:'MunMunSrinakarin',      type:'keyword'},
+      {id:'k5', text:'#MMAD',                type:'hashtag'},
+      {id:'k6', text:'#มันมัน',               type:'hashtag'},
+    ]
+  }],
+  activeProj:'mmad'
+};
+let modalMode = '', _ctx = null;
+function save(){ localStorage.setItem('sl_v4', JSON.stringify(S)); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
+
+// ── URL BUILDERS ───────────────────────────────────────────────────────────────
+function pad2(n){ return String(n).padStart(2,'0'); }
+function fmtDate(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+function daysAgo(n){ const d=new Date(); d.setDate(d.getDate()-n); return d; }
+
+// Google tbs param
+function gTbs(r){
+  if(r==='d')  return 'tbs=qdr:d';
+  if(r==='3d') { const p=daysAgo(3),n=new Date(); return `tbs=cdr:1,cd_min:${p.getMonth()+1}/${p.getDate()}/${p.getFullYear()},cd_max:${n.getMonth()+1}/${n.getDate()}/${n.getFullYear()}`; }
+  if(r==='w')  return 'tbs=qdr:w';
+  if(r==='m')  return 'tbs=qdr:m';
+  return null;
+}
+
+// Bing web filter
+function bFilter(r){
+  if(r==='d')         return 'ex1:"ez1"';
+  if(r==='3d'||r==='w') return 'ex1:"ez2"';
+  if(r==='m')         return 'ex1:"ez3"';
+  return null;
+}
+// Bing News: sort by date + interval
+function bNewsParam(r){
+  // SortIndex=1 = sort by date (always apply)
+  // qft interval: 8=past24h, 7=pastweek, 5=pastmonth
+  const base = '&SortIndex=1';
+  if(r==='d')         return base+'&qft=interval%3D%228%22';
+  if(r==='3d'||r==='w') return base+'&qft=interval%3D%227%22';
+  if(r==='m')         return base+'&qft=interval%3D%225%22';
+  return base;
+}
+
+// DuckDuckGo df param
+function ddgDf(r){
+  if(r==='d') return 'd';
+  if(r==='3d'){ const p=daysAgo(3),n=new Date(); return `${fmtDate(p)}..${fmtDate(n)}`; }
+  if(r==='w') return 'w';
+  if(r==='m') return 'm';
+  return null;
+}
+
+// X since:date
+function xSince(r){
+  let d=new Date();
+  if(r==='d')  d=daysAgo(1);
+  else if(r==='3d') d=daysAgo(3);
+  else if(r==='w')  d=daysAgo(7);
+  else if(r==='m')  { d=new Date(); d.setMonth(d.getMonth()-1); }
+  else return null;
+  return fmtDate(d);
+}
+
+// YouTube sp param (sort by upload date)
+function ytSp(r){
+  if(r==='d')  return 'EgIIAg%3D%3D'; // Today
+  if(r==='3d'||r==='w') return 'EgIIAw%3D%3D'; // This week
+  if(r==='m')  return 'EgIIBA%3D%3D'; // This month
+  return 'CAISAhAB'; // Sort by date
+}
+
+// Facebook — URL ปกติ (filter ผ่าน URL ถูก FB บล็อก → ต้องเปิด "Recent posts" ในหน้าเอง)
+function fbUrl(raw, r){
+  return `https://www.facebook.com/search/posts/?q=${encodeURIComponent(raw)}`;
+}
+
+function buildUrls(kwText, engine, r){
+  const raw  = kwText.replace(/^#/,'');
+  const enc  = encodeURIComponent(kwText);
+  const encR = encodeURIComponent(raw);
+
+  // ── Google ──
+  const gT   = gTbs(r);
+  const gP   = gT ? `&${gT}` : '';
+  const gWeb  = `https://www.google.com/search?q=${enc}${gP}`;
+  const gNews = `https://news.google.com/search?q=${enc}&hl=th&gl=TH&ceid=TH:th`;
+  const gIg   = `https://www.google.com/search?q=site%3Ainstagram.com+${encR}${gP}`;
+  const gLine = `https://www.google.com/search?q=site%3Atoday.line.me+${encR}${gP}`;
+
+  // ── Bing ──
+  const bF    = bFilter(r);
+  const bFP   = bF ? `&filters=${encodeURIComponent(bF)}` : '';
+  const bWeb  = `https://www.bing.com/search?q=${enc}${bFP}`;
+  const bNews = `https://www.bing.com/news/search?q=${enc}${bNewsParam(r)}`;
+  const bIg   = `https://www.bing.com/search?q=site%3Ainstagram.com+${encR}${bFP}`;
+  const bLine = `https://www.bing.com/search?q=site%3Atoday.line.me+${encR}${bFP}`;
+
+  // ── DuckDuckGo ──
+  const df    = ddgDf(r);
+  const dfP   = df ? `&df=${df}` : '';
+  const dWeb  = `https://duckduckgo.com/?q=${enc}${dfP}`;
+  const dNews = `https://duckduckgo.com/?q=${enc}&iar=news&ia=news${dfP}`;
+  const dIg   = `https://duckduckgo.com/?q=site%3Ainstagram.com+${encR}${dfP}`;
+  const dLine = `https://duckduckgo.com/?q=site%3Atoday.line.me+${encR}${dfP}`;
+
+  // ── Select by engine ──
+  let webUrl, newsUrl, igUrl, lineUrl;
+  if(engine==='bing'){
+    webUrl=bWeb; newsUrl=bNews; igUrl=bIg; lineUrl=bLine;
+  } else if(engine==='ddg'){
+    webUrl=dWeb; newsUrl=dNews; igUrl=dIg; lineUrl=dLine;
+  } else if(engine==='google'){
+    webUrl=gWeb; newsUrl=gNews; igUrl=gIg; lineUrl=gLine;
+  } else {
+    // Custom engine
+    const ce = S.customEngines.find(e=>e.id===engine);
+    const u  = ce ? (ce.url.includes('{q}') ? ce.url.replace('{q}',enc) : ce.url+enc) : gWeb;
+    webUrl=u; newsUrl=gNews; igUrl=gIg; lineUrl=gLine;
+  }
+
+  // ── X ──
+  const since = xSince(r);
+  const xQ    = since ? `${enc}+since:${since}` : enc;
+
+  // ── YouTube ──
+  const yt = `https://www.youtube.com/results?search_query=${encR}&sp=${ytSp(r)}`;
+
+  return {
+    web:    webUrl,
+    news:   newsUrl,
+    ig:     igUrl,
+    fb:     fbUrl(raw, r),
+    tiktok: `https://www.tiktok.com/search?q=${encR}&type=latest`,
+    x:      `https://x.com/search?q=${xQ}&f=live`,
+    yt,
+    threads:`https://www.threads.net/search?q=${encR}&serp_type=default`,
+    lemon8: `https://www.google.com/search?q=site%3Alemon8-app.com+${encR}`,
+    line:   lineUrl,
+  };
+}
+
+// ── RENDER ENGINE PILLS ────────────────────────────────────────────────────────
+function renderEnginePills(){
+  const all = [...BUILTIN_ENGINES, ...S.customEngines];
+  document.getElementById('enginePills').innerHTML = all.map(e => {
+    const isActive = e.id === S.engine;
+    const del = !e.builtin ? `<span class="pill-del" onclick="deleteEngine('${e.id}',event)" title="ลบ">✕</span>` : '';
+    return `<button class="pill ${isActive?'e-active':''}" data-e="${e.id}" onclick="setEngine('${e.id}',this)">${e.name}${del}</button>`;
+  }).join('');
+}
+
+// ── RENDER PROJECTS ────────────────────────────────────────────────────────────
+function renderProjects(){
+  document.getElementById('projList').innerHTML = S.projects.map(p=>`
+    <div class="proj-item ${p.id===S.activeProj?'active':''}" onclick="selectProject('${p.id}')">
+      <span class="proj-dot ${p.color}"></span>
+      <span class="proj-name">${p.name}</span>
+      <span class="proj-cnt">${p.keywords.length}</span>
+    </div>`).join('');
+}
+
+// ── RENDER MAIN ────────────────────────────────────────────────────────────────
+function rlabel(){ return {d:'24 ชม.','3d':'3 วัน',w:'1 สัปดาห์',m:'1 เดือน','':'ทั้งหมด'}[S.range]||''; }
+
+function renderMain(){
+  const main = document.getElementById('mainArea');
+  const proj = S.projects.find(p=>p.id===S.activeProj);
+  if(!proj){
+    main.innerHTML=`<div class="no-proj"><div class="icon">👈</div><p>เลือกโปรเจ็กต์ หรือกด <strong>+</strong> เพื่อเพิ่มใหม่</p></div>`;
+    return;
+  }
+
+  // engine label
+  const allEng = [...BUILTIN_ENGINES,...S.customEngines];
+  const engName = allEng.find(e=>e.id===S.engine)?.name || S.engine;
+
+  const kwHtml = proj.keywords.length===0
+    ? `<div class="empty"><div class="empty-icon">🔑</div><h3>ยังไม่มีคีย์เวิร์ด</h3><p>พิมพ์ keyword หรือ <code>#hashtag</code> ด้านบน</p></div>`
+    : proj.keywords.map(kw=>{
+        const urls = buildUrls(kw.text, S.engine, S.range);
+        const platBtns = PLATFORMS.map(p=>{
+          const url = urls[p.k];
+          const noT = !p.t && S.range;
+          return `<a class="pb ${p.cls}" href="${url}" target="_blank" rel="noopener">${p.label}${noT?'<span class="no-time-flag">⚠</span>':''}</a>`;
+        }).join('');
+
+        const allUrls = PLATFORMS.map(p=>urls[p.k]);
+        return `
+        <div class="kw-card">
+          <div class="kw-hd">
+            <span class="kw-label">${kw.text}</span>
+            <span class="badge ${kw.type==='hashtag'?'badge-hash':'badge-kw'}">${kw.type==='hashtag'?'#hashtag':'keyword'}</span>
+            <span style="font-size:10px;color:#aaa;background:#f0f4ff;padding:2px 7px;border-radius:8px">${engName}</span>
+            <button class="btn-del-kw" onclick="deleteKeyword('${proj.id}','${kw.id}')">✕</button>
+          </div>
+          <div class="plat-grid">
+            <button class="pb pb-open-all" onclick="openAll(${JSON.stringify(allUrls).replace(/"/g,'&quot;')})">🚀 เปิดทั้งหมด · ${rlabel()}</button>
+            ${platBtns}
+          </div>
+        </div>`;
+      }).join('');
+
+  main.innerHTML=`
+    <div class="proj-hd">
+      <span class="proj-dot ${proj.color}" style="width:10px;height:10px;border-radius:50%;display:inline-block"></span>
+      <span class="proj-title">${proj.name}</span>
+      <button class="btn-xs btn-rename" onclick="openModal('rename','${proj.id}')">✏️ เปลี่ยนชื่อ</button>
+      <button class="btn-xs btn-del-proj" onclick="deleteProject('${proj.id}')">🗑 ลบ</button>
+    </div>
+    <div class="add-row">
+      <input id="kwInput" type="text" placeholder="keyword หรือ #hashtag — กด Enter"
+             onkeydown="if(event.key==='Enter')addKeyword('${proj.id}')"/>
+      <button class="btn-add-kw" onclick="addKeyword('${proj.id}')">+ เพิ่ม</button>
+    </div>
+    <div class="kw-area">${kwHtml}</div>`;
+}
+
+function render(){ renderEnginePills(); renderProjects(); renderMain(); }
+
+// ── OPEN ALL (direct tabs) ─────────────────────────────────────────────────────
+function openAll(urls){
+  let opened = 0;
+  urls.forEach(url => {
+    const w = window.open(url, '_blank');
+    if(w) opened++;
+  });
+  if(opened === urls.length){
+    showToast(`เปิด ${opened} แท็บแล้ว 🚀`);
+  } else {
+    showToast(`เปิดได้ ${opened}/${urls.length} — กด 🚫 ที่แถบ URL แล้วเลือก "Allow popups" แล้วลองใหม่`);
+  }
+}
+
+// ── CONTROLS ──────────────────────────────────────────────────────────────────
+function setRange(r, el){
+  S.range = r;
+  save();
+  document.querySelectorAll('.pill[data-r]').forEach(p=>{
+    p.classList.toggle('active', p.dataset.r === r);
+  });
+  renderMain(); // re-render main only (faster)
+}
+function setEngine(id, el){
+  S.engine = id;
+  save();
+  renderEnginePills();
+  renderMain();
+}
+function deleteEngine(id, ev){
+  ev.stopPropagation();
+  S.customEngines = S.customEngines.filter(e=>e.id!==id);
+  if(S.engine===id) S.engine='google';
+  save(); render();
+}
+
+// ── PROJECT / KEYWORD ─────────────────────────────────────────────────────────
+function selectProject(id){ S.activeProj=id; save(); render(); }
+function addKeyword(projId){
+  const inp=document.getElementById('kwInput');
+  const text=(inp.value||'').trim();
+  if(!text) return;
+  const proj=S.projects.find(p=>p.id===projId);
+  if(!proj) return;
+  if(proj.keywords.some(k=>k.text.toLowerCase()===text.toLowerCase())){ showToast('มีคีย์เวิร์ดนี้แล้ว'); return; }
+  proj.keywords.push({id:uid(),text,type:text.startsWith('#')?'hashtag':'keyword'});
+  save(); render();
+  setTimeout(()=>{ const el=document.getElementById('kwInput'); if(el) el.focus(); },50);
+  showToast(`เพิ่ม "${text}" แล้ว ✓`);
+}
+function deleteKeyword(projId,kwId){
+  const proj=S.projects.find(p=>p.id===projId);
+  if(proj){ proj.keywords=proj.keywords.filter(k=>k.id!==kwId); save(); render(); }
+}
+function deleteProject(projId){
+  if(!confirm('ลบโปรเจ็กต์นี้?')) return;
+  S.projects=S.projects.filter(p=>p.id!==projId);
+  if(S.activeProj===projId) S.activeProj=S.projects[0]?.id||null;
+  save(); render();
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+function openModal(mode, ctx){
+  modalMode=mode; _ctx=ctx||null;
+  const box=document.getElementById('modalBox');
+  if(mode==='add-proj'){
+    box.innerHTML=`
+      <h3>เพิ่มโปรเจ็กต์ใหม่</h3>
+      <label>ชื่อโปรเจ็กต์</label>
+      <input id="mi1" placeholder="เช่น MMAD, ลูกค้า B"/>
+      <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">ยกเลิก</button><button class="btn-ok" onclick="modalOk()">ตกลง</button></div>`;
+  } else if(mode==='rename'){
+    const p=S.projects.find(p=>p.id===_ctx);
+    box.innerHTML=`
+      <h3>เปลี่ยนชื่อโปรเจ็กต์</h3>
+      <label>ชื่อใหม่</label>
+      <input id="mi1" value="${p?p.name:''}"/>
+      <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">ยกเลิก</button><button class="btn-ok" onclick="modalOk()">ตกลง</button></div>`;
+  } else if(mode==='add-engine'){
+    box.innerHTML=`
+      <h3>เพิ่ม Search Engine</h3>
+      <label>ชื่อ Engine</label>
+      <input id="mi1" placeholder="เช่น Yahoo, Startpage"/>
+      <label>Search URL</label>
+      <input id="mi2" placeholder="https://search.yahoo.com/search?p={q}"/>
+      <p class="hint">ใส่ <code>{q}</code> แทนตำแหน่ง keyword — หรือวาง URL แล้ว keyword จะต่อท้ายอัตโนมัติ<br>
+      ตัวอย่าง: <code>https://duckduckgo.com/?q={q}&df=d</code></p>
+      <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">ยกเลิก</button><button class="btn-ok" onclick="modalOk()">เพิ่ม</button></div>`;
+  }
+  document.getElementById('modalOverlay').classList.remove('hidden');
+  setTimeout(()=>{ const el=document.getElementById('mi1'); if(el) el.focus(); },50);
+}
+function closeModal(){ document.getElementById('modalOverlay').classList.add('hidden'); }
+function modalOk(){
+  if(modalMode==='add-proj'){
+    const v=(document.getElementById('mi1').value||'').trim();
+    if(!v) return;
+    const id=uid();
+    S.projects.push({id,name:v,color:COLORS[S.projects.length%COLORS.length],keywords:[]});
+    S.activeProj=id;
+  } else if(modalMode==='rename'){
+    const v=(document.getElementById('mi1').value||'').trim();
+    if(!v) return;
+    const p=S.projects.find(p=>p.id===_ctx);
+    if(p) p.name=v;
+  } else if(modalMode==='add-engine'){
+    const name=(document.getElementById('mi1').value||'').trim();
+    const url =(document.getElementById('mi2').value||'').trim();
+    if(!name||!url){ showToast('กรุณากรอกชื่อและ URL'); return; }
+    if(!url.startsWith('http')){ showToast('URL ต้องขึ้นต้นด้วย http'); return; }
+    S.customEngines.push({id:uid(),name,url,builtin:false});
+    S.engine=S.customEngines[S.customEngines.length-1].id;
+  }
+  save(); closeModal(); render();
+}
+
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape') closeModal();
+  if(e.key==='Enter'&&!document.getElementById('modalOverlay').classList.contains('hidden')) modalOk();
+});
+
+// ── TOAST ──────────────────────────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ── BOOKMARKLET ────────────────────────────────────────────────────────────────
+(function(){
+  var code = `(function(){
+  function tryClick(){
+    // 1. aria-label on switch
+    var sws=document.querySelectorAll('[role="switch"]');
+    for(var i=0;i<sws.length;i++){
+      var lbl=(sws[i].getAttribute('aria-label')||'').toLowerCase();
+      if(lbl.includes('recent')||lbl.includes('ล่าสุด')){
+        if(sws[i].getAttribute('aria-checked')!=='true') sws[i].click();
+        return true;
+      }
+    }
+    // 2. span/div text → walk up to find switch
+    var all=document.querySelectorAll('span,div,label');
+    for(var j=0;j<all.length;j++){
+      var t=all[j].textContent.trim();
+      if(t==='Recent posts'||t==='โพสต์ล่าสุด'||t==='Recent Posts'){
+        var p=all[j];
+        for(var k=0;k<8;k++){
+          p=p.parentElement; if(!p) break;
+          var sw=p.querySelector('[role="switch"]');
+          if(!sw&&p.getAttribute('role')==='switch') sw=p;
+          if(sw){if(sw.getAttribute('aria-checked')!=='true') sw.click(); return true;}
+        }
+      }
+    }
+    // 3. first unchecked switch in sidebar / filter area
+    var areas=['aside','[role="complementary"]','[data-pagelet]'];
+    for(var a=0;a<areas.length;a++){
+      var area=document.querySelector(areas[a]);
+      if(area){
+        var uc=area.querySelectorAll('[role="switch"][aria-checked="false"]');
+        if(uc.length){uc[0].click();return true;}
+      }
+    }
+    // 4. last resort — any unchecked switch on page
+    var any=document.querySelectorAll('[role="switch"][aria-checked="false"]');
+    if(any.length){any[0].click();return true;}
+    return false;
+  }
+  if(!tryClick()) setTimeout(function(){if(!tryClick()) alert('ไม่พบ toggle — รอให้ผลค้นหาโหลดเสร็จแล้วลองใหม่');},1200);
+})();`;
+  var el = document.getElementById('bmBtn');
+  if(el) el.setAttribute('href','javascript:'+code);
+})();
+
+// ── INIT ───────────────────────────────────────────────────────────────────────
+// Restore range pill
+document.querySelectorAll('.pill[data-r]').forEach(p=>{
+  p.classList.toggle('active', p.dataset.r===S.range);
+});
+render();
+</script>
+</body>
+</html>
